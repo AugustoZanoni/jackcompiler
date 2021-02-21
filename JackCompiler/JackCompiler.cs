@@ -104,12 +104,34 @@ namespace JackCompiler
             public Token(string token) {
                 content = token;
                 type = "unkown";
+                if (token != null)
+                {
+                    findKeyword(token);
+                    fundSymbol(token);
+                    findIdentifier(token);
+                    findIntVal(token);
+                    findStringVal(token);
+                }
             }
-            public string findKeyword(string token) { return ""; }
-            public string fundSymbol(string token) { return ""; }
-            public string findIdentifier() { return ""; }
-            public string findIntVal() { return ""; }
-            public string findStringVal() { return ""; }
+            public void findKeyword(string token) {
+                string keywords = "class|constructor|function|"+
+                                  "method|field|static|var|int|"+
+                                  "char|boolean|void|true|false|"+
+                                  "null|this|let|do|if|else|"+
+                                  "while|return";
+                if (Regex.IsMatch(token, keywords)) type = "Keyword";                
+            }
+            public void fundSymbol(string token) {
+                string symbols = @"^({|}|(|)|\[|\]|.|,|;|\+|-|\*|\/|&||<|>|=|~)$";
+                if (Regex.IsMatch(token, symbols)) type = "Symbbol";
+            }
+            public void findIdentifier(string token) {  }
+            public void findIntVal(string token) {  }
+            public void findStringVal(string token) {
+                if (Regex.IsMatch(token, "(\".*\")")) type = "stringConst";
+
+
+            }
         }
 
     }
