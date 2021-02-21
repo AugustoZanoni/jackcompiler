@@ -3,3 +3,5 @@
 ################################################################################
 
 /.vs
+/JackCompiler/bin/Debug/netcoreapp3.1
+/JackCompiler/obj
