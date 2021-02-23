@@ -24,7 +24,7 @@ namespace JackCompiler
                 writer.WriteStartElement("tokens");
                 while (tknz.hasMoreTokens())
                 {
-                    writer.WriteElementString(tknz.token().type, tknz.token().content);
+                    writer.WriteElementString(tknz.token().type.ToString(), tknz.token().content);
                     tknz.advance();
                 }
                 writer.WriteEndElement();
@@ -39,7 +39,7 @@ namespace JackCompiler
         string ActualToken { get; set; }
         int LineCompiling = 0;
 
-        Stack<string> JackTokensInLine = new Stack<string>();
+        Queue<string> JackTokensInLine = new Queue<string>();
         string[] JackLines { get; set; }
         public JackTokenizer(string fname) {
             try
@@ -75,17 +75,16 @@ namespace JackCompiler
                 }
                 else
                 {
-                    foreach (string Token in JackLines[LineCompiling].Split(" "))
+                    foreach (Match Token in Regex.Matches( JackLines[LineCompiling], @"("".*"")|[a-zA-Z_]+[a-zA-Z0-9_]*|[0-9]+|[+|*|/|\-|{|}|(|)|\[|\]|\.|,|;|<|>|=|~]"))
                     {
-                        JackTokensInLine.Push(Token);
+                        JackTokensInLine.Enqueue(Token.Value);
                     }
                     LineCompiling++;
+                    ActualToken = JackTokensInLine.Dequeue();
                 }
-            }
+            } 
             else
-            {
-                ActualToken = JackTokensInLine.Pop();
-            }
+                ActualToken = JackTokensInLine.Dequeue();
         }
         public bool hasMoreTokens() {
             if (  LineCompiling < JackLines.Length)
@@ -98,19 +97,30 @@ namespace JackCompiler
         }
 
         public class Token {
-            public string type;
+            public enum Type
+            {
+                UNIDENTIFIED_TOKEN,
+                KEYWORD,
+                IDENTIFIER,
+                INTEGER_CONSTANT,
+                STRING_CONSTANT,
+                SYMBOL,
+            }
+
+            public Type type;
 
             public string content;
             public Token(string token) {
                 content = token;
-                type = "unkown";
+                //type = "unkown";
                 if (token != null)
                 {
-                    findKeyword(token);
-                    fundSymbol(token);
-                    findIdentifier(token);
-                    findIntVal(token);
-                    findStringVal(token);
+                    if (type == 0) findKeyword(token);
+                    if (type == 0) findStringVal(token);
+                    if (type == 0) findIdentifier(token);
+                    if (type == 0) findIntVal(token);
+                    if (type == 0) fundSymbol(token);
+                    if (type == 0) type = Type.UNIDENTIFIED_TOKEN;
                 }
             }
             public void findKeyword(string token) {
@@ -119,18 +129,23 @@ namespace JackCompiler
                                   "char|boolean|void|true|false|"+
                                   "null|this|let|do|if|else|"+
                                   "while|return";
-                if (Regex.IsMatch(token, keywords)) type = "Keyword";                
+                if (Regex.IsMatch(token, keywords)) type = Type.KEYWORD;                
             }
             public void fundSymbol(string token) {
                 string symbols = @"^({|}|(|)|\[|\]|.|,|;|\+|-|\*|\/|&||<|>|=|~)$";
-                if (Regex.IsMatch(token, symbols)) type = "Symbbol";
+                if (Regex.IsMatch(token, symbols)) type = Type.SYMBOL;
             }
-            public void findIdentifier(string token) {  }
-            public void findIntVal(string token) {  }
+            public void findIdentifier(string token)
+            {
+                string identifier = "[a-zA-Z_]+[a-zA-Z0-9_]*";
+                if (Regex.IsMatch(token, identifier)) type = Type.IDENTIFIER;
+            }
+            public void findIntVal(string token) {
+                string integer = "[0-9]+";
+                if (Regex.IsMatch(token, integer)) type = Type.INTEGER_CONSTANT;
+            }
             public void findStringVal(string token) {
-                if (Regex.IsMatch(token, "(\".*\")")) type = "stringConst";
-
-
+                if (Regex.IsMatch(token, "(\".*\")")) type = Type.STRING_CONSTANT;
             }
         }
 
