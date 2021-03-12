@@ -88,7 +88,7 @@ namespace JackCompiler
             else
                 throw new CompilerException();
             tokenizer.advance();
-            if(tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.isMatch(tokenizer.token().content.toLower(), "int|char|boolean|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
+            if(tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException();
@@ -118,7 +118,7 @@ namespace JackCompiler
             else
                 throw new CompilerException();
             tokenizer.advance();
-            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.isMatch(tokenizer.token().content.toLower(), "int|char|boolean|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean|void|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
                 Subroutine.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException();
@@ -129,18 +129,22 @@ namespace JackCompiler
                 throw new CompilerException();
             tokenizer.advance();
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
-                classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                Subroutine.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException();
             tokenizer.advance();
 
-
-            if (tokenizer.token() != ")")
-                CompileParameterList(tokenizer);
+            
+            if (tokenizer.token().content != ")")
+            {
+                XElement ParameterList;
+                CompileParameterList(tokenizer, out ParameterList);
+                Subroutine.Add(ParameterList);
+            }
 
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
-                classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                Subroutine.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException();
             tokenizer.advance();
@@ -150,22 +154,102 @@ namespace JackCompiler
             XElement SubroutineBody = new XElement("subroutineBody");
             SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             tokenizer.advance();
-            
+
             //VarDec
-            //Statements
+            while (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "var")
+            {
+                XElement VarDec;
+                CompileVarDec(tokenizer, out VarDec);
+                SubroutineBody.Add(VarDec);
+            }
+
+            //Subroutine
+            if (tokenizer.token().content != "}")
+            {
+                XElement Statement;
+                compileStatements(tokenizer, out Statement);
+                SubroutineBody.Add(Statement);
+            }
 
             SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-            SubroutineBody.WriteTo(Subroutine);
+            Subroutine.Add(SubroutineBody);
 
-            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}") ;
+            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}") 
+                SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException();
             Subroutine.WriteTo(writer);
         }
 
-        public void CompileParameterList(JackTokenizer tokenizer)
+        public void CompileParameterList(JackTokenizer tokenizer, out XElement ParameterList)
         {
-            while (tokenizer.token() != ")") tokenizer.advance();
+            ParameterList = new XElement("parameterList");
+            while (tokenizer.token().content != ")")
+            {
+                ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                tokenizer.advance();
+            }
+        }
+
+        public void CompileVarDec(JackTokenizer tokenizer, out XElement VarDec)
+        {
+            VarDec = new XElement("varDec");
+
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "var")
+                VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            else
+                throw new CompilerException();
+            tokenizer.advance();
+            if (Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean") || tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+                VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            else
+                throw new CompilerException();
+            tokenizer.advance();
+            if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+                VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            else
+                throw new CompilerException();
+            tokenizer.advance();
+            while(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ",")
+            {
+                VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                tokenizer.advance();
+                if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+                    VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                else
+                    throw new CompilerException();
+                tokenizer.advance();
+            }
+
+            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
+                VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            else
+                throw new CompilerException();
+            tokenizer.advance();
+        }
+
+        public void compileStatements(JackTokenizer tokenizer, out XElement Statements)
+        {
+            Statements = new XElement("statements");
+            while(tokenizer.hasMoreTokens() && tokenizer.token().content != "}")
+            {
+                switch (tokenizer.token().content.ToLower())
+                {
+                    case "let":
+                        break;
+                    case "if":
+                        break;
+                    case "while":
+                        break;
+                    case "do":
+                        break;
+                    case "return":
+                        break;
+                    default:
+                        break;
+                }
+                tokenizer.advance();
+            }
         }
     }
 }
