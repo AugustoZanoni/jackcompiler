@@ -11,7 +11,7 @@ namespace JackCompiler
     {
         static void Main(string[] args)
         {
-            new CompilationEngine("main.jack");
+            new CompilationEngine("ExpressionLessSquare/Main.jack");
             //RunJackTokenizer();
         }
 

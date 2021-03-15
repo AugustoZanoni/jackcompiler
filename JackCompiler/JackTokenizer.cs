@@ -34,6 +34,7 @@ namespace JackCompiler
             }
             catch (IOException e)
             {
+                throw e;
                 JackContent = "";
             }
         }
@@ -45,8 +46,12 @@ namespace JackCompiler
                 //verifica Linhas em branco
                 if (JackLines[LineCompiling] == "")
                 {
-                    LineCompiling++;
-                    advance();
+                    if ((LineCompiling + 1) < (JackLines.Length))
+                    {
+                        LineCompiling++;
+                        advance();
+                    }else
+                        LineCompiling++;
                 }
                 else
                 {
