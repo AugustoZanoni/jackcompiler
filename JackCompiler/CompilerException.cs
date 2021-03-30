@@ -6,9 +6,11 @@ namespace JackCompiler
 {
     class CompilerException : Exception
     {
-       public CompilerException()
+       public CompilerException(string expected, int linecompiling)
        {
-            
+            string Message = "Expected " + expected + " on Line " + linecompiling;
+            Console.WriteLine(Message);
+            throw new ArgumentException(Message);
        }
     }
 }
