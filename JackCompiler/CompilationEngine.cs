@@ -114,6 +114,7 @@ namespace JackCompiler
             else
                 throw new CompilerException("constructor|function|method", tokenizer.LineCompiling);
             tokenizer.advance();
+            
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean|void|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
                 Subroutine.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
@@ -130,14 +131,15 @@ namespace JackCompiler
                 throw new CompilerException("(", tokenizer.LineCompiling);
             tokenizer.advance();
 
-            
             if (tokenizer.token().content != ")")
             {
                 XElement ParameterList;
                 CompileParameterList(tokenizer, out ParameterList);
                 Subroutine.Add(ParameterList);
             }
-
+            else{
+                Subroutine.Add(new XElement("parameterList")); // CORRIGIR --> O intuito é fazer aparecer os nomes alinhados tanto o de cima quanto o de baixo
+            }
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
                 Subroutine.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -152,23 +154,29 @@ namespace JackCompiler
             SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             tokenizer.advance();
 
-            //VarDec
-            while (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "var")
-            {
-                XElement VarDec;
-                CompileVarDec(tokenizer, out VarDec);
-                SubroutineBody.Add(VarDec);
-            }
-
-            //Subroutine
-            if (tokenizer.token().content != "}")
-            {
-                XElement Statement;
-                compileStatements(tokenizer, out Statement);
-                SubroutineBody.Add(Statement);
-            }
-
             Subroutine.Add(SubroutineBody);
+
+            // Aparentemente o comportamento é estável
+            
+            while (tokenizer.token().content != "}"){
+                if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD){
+                    if(tokenizer.token().content.ToLower() == "var"){
+                        XElement VarDec;
+                        CompileVarDec(tokenizer, out VarDec);
+                        SubroutineBody.Add(VarDec);
+                        tokenizer.advance();
+                    } else {
+                        XElement Statement;
+                        compileStatements(tokenizer, out Statement);
+                        SubroutineBody.Add(Statement);
+                    }
+                } else {
+                    Console.WriteLine(tokenizer.token().content);
+                    tokenizer.advance();
+                }
+                // TESTADO
+            }
+            // Aparentemente o comportamento é estável
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}") 
                 SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -182,9 +190,11 @@ namespace JackCompiler
             ParameterList = new XElement("parameterList");
             while (tokenizer.token().content != ")")
             {
-                ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                tokenizer.advance();
+            //Console.WriteLine(tokenizer.token().content); // Testando
+            ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            tokenizer.advance();
             }
+            
         }       
 
         public void CompileVarDec(JackTokenizer tokenizer, out XElement VarDec)
@@ -221,46 +231,56 @@ namespace JackCompiler
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException(";", tokenizer.LineCompiling);
-            tokenizer.advance();
+            //tokenizer.advance();
         }
 
         public void compileStatements(JackTokenizer tokenizer, out XElement Statements)
         {
             Statements = new XElement("statements");
-            while (tokenizer.hasMoreTokens() && tokenizer.token().content != "}")
-            {
+
+            while(tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD){
                 switch (tokenizer.token().content.ToLower())
                 {
                     case "let":
+                        //Console.WriteLine("Passou no let"); // TESTANDO
                         XElement letStatement;
                         CompileLet(tokenizer, out letStatement);
                         Statements.Add(letStatement);
+                        tokenizer.advance();
                         break;
                     case "if":
                         XElement ifSatement;
                         CompileIf(tokenizer, out ifSatement);
                         Statements.Add(ifSatement);
                         break;
-                    case "while":
+                    /*case "while":
                         XElement whileStatement;
                         CompileWhile(tokenizer, out whileStatement);
                         Statements.Add(whileStatement);
-                        break;
+                        break;*/
                     case "do":
                         XElement Do;
                         compileDo(tokenizer, out Do);
                         Statements.Add(Do);
+                        tokenizer.advance();
                         break;
                     case "return":
                         XElement returnStatement;
                         compileReturn(tokenizer, out returnStatement);
                         Statements.Add(returnStatement);
+                        tokenizer.advance();
                         break;
                     default:
                         break;
                 }
-                tokenizer.advance();
             }
+
+            
+            //tokenizer.advance();
+            /*while (tokenizer.hasMoreTokens() && tokenizer.token().content != "}")
+            {
+                
+            }*/
         }
 
         public void compileDo(JackTokenizer tokenizer, out XElement Do)
@@ -291,9 +311,17 @@ namespace JackCompiler
             else
                 throw new CompilerException("(", tokenizer.LineCompiling);
             tokenizer.advance();
-            XElement expressionList;
-            CompileExpressionList(tokenizer, out expressionList);
-            Do.Add(expressionList);
+            
+            if (tokenizer.token().content != ")")
+            {
+                XElement expressionList;
+                CompileParameterList(tokenizer, out expressionList);
+                Do.Add(expressionList);
+            }
+            else{
+                Do.Add(new XElement("expressionList")); // CORRIGIR --> O intuito é fazer aparecer os nomes alinhados tanto o de cima quanto o de baixo
+            }
+            //
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
                 Do.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
@@ -323,6 +351,7 @@ namespace JackCompiler
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "[")
             {
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                tokenizer.advance();
 
                 XElement Expression;
                 CompileExpression(tokenizer, out Expression);
@@ -343,12 +372,22 @@ namespace JackCompiler
 
             XElement letExpression;
             CompileExpression(tokenizer, out letExpression);
-            letStatement.Add(letExpression);            
+            letStatement.Add(letExpression);
+
+            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR
+
+            while(tokenizer.token().content != ";"){
+                Console.WriteLine(tokenizer.token().content); // Testando
+                tokenizer.advance();
+            }
+
+            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException(";", tokenizer.LineCompiling);
+            
 
         }
 
@@ -359,7 +398,7 @@ namespace JackCompiler
                 returnStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("return", tokenizer.LineCompiling);
-            if (tokenizer.token().type != JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
+            /*if (tokenizer.token().type != JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
             {
                 XElement expression;
                 //XElement expression = new XElement("expression");
@@ -371,7 +410,7 @@ namespace JackCompiler
                 //expression.Add(term);
                 CompileExpression(tokenizer, out expression);
                 returnStatement.Add(expression);
-            }
+            }*/
             tokenizer.advance();
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 returnStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -397,9 +436,9 @@ namespace JackCompiler
             
             if (tokenizer.token().content != ")")
             {
-                XElement ParameterList;
-                CompileParameterList(tokenizer, out ParameterList);
-                ifStatement.Add(ParameterList);
+                XElement Expression;
+                CompileExpression(tokenizer, out Expression);
+                ifStatement.Add(Expression);
             }
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
@@ -417,27 +456,75 @@ namespace JackCompiler
             compileStatements(tokenizer, out Statements);
             ifStatement.Add(Statements);
 
+            //Aparentemente o comportamento é estável
+            
+            while (tokenizer.token().content != "}"){
+                if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD){
+                    if(tokenizer.token().content.ToLower() == "var"){
+                        XElement VarDec;
+                        CompileVarDec(tokenizer, out VarDec);
+                        ifStatement.Add(VarDec);
+                        tokenizer.advance();
+                    } else {
+                        XElement Statement;
+                        compileStatements(tokenizer, out Statement);
+                        ifStatement.Add(Statement);
+
+                    }
+                }
+            }
+
+            //Aparentemente o comportamento é estável
+
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}")
                 ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("}", tokenizer.LineCompiling);
             tokenizer.advance();
-            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "else")
+
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "else")
             {
-                ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "else")
+                    ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                else
+                    throw new CompilerException("else", tokenizer.LineCompiling);
                 tokenizer.advance();
+
                 if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "{")
                     ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 else
                     throw new CompilerException("{", tokenizer.LineCompiling);
+                tokenizer.advance();
 
-                compileStatements(tokenizer, out Statements);
-                ifStatement.Add(Statements);
+                XElement elseStatements;
+                compileStatements(tokenizer, out elseStatements);
+                ifStatement.Add(elseStatements);
+
+                //Aparentemente o comportamento é estável
+                
+                while (tokenizer.token().content != "}"){
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD){
+                        if(tokenizer.token().content.ToLower() == "var"){
+                            XElement VarDec;
+                            CompileVarDec(tokenizer, out VarDec);
+                            ifStatement.Add(VarDec);
+                            tokenizer.advance();
+                        } else {
+                            XElement Statement;
+                            compileStatements(tokenizer, out Statement);
+                            ifStatement.Add(Statement);
+
+                        }
+                    }
+                }
+
+                //Aparentemente o comportamento é estável
 
                 if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}")
                     ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 else
                     throw new CompilerException("}", tokenizer.LineCompiling);
+                tokenizer.advance();
             }
                 
         }
@@ -482,16 +569,66 @@ namespace JackCompiler
             {
                 Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
-                if(tokenizer.token().type ==  JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "[")
+
+                if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "."){
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ".")
+                    {
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                        tokenizer.advance();
+                        if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+                            Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                        else
+                            throw new CompilerException("identifier", tokenizer.LineCompiling);
+                        tokenizer.advance();
+                    }
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    else
+                        throw new CompilerException("(", tokenizer.LineCompiling);
+                    tokenizer.advance();
+                    
+                    if (tokenizer.token().content != ")")
+                    {
+                        XElement expressionList;
+                        CompileParameterList(tokenizer, out expressionList);
+                        Term.Add(expressionList);
+                    }
+                    else{
+                        Term.Add(new XElement("expressionList")); // CORRIGIR --> O intuito é fazer aparecer os nomes alinhados tanto o de cima quanto o de baixo
+                    }
+                    //
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    else
+                        throw new CompilerException(")", tokenizer.LineCompiling);
+                    tokenizer.advance();
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    else
+                        throw new CompilerException(";", tokenizer.LineCompiling);
+                }
+                
+                if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "[")
                 {
-                    XElement expression;
-                    CompileExpression(tokenizer, out expression);
-                    Term.Add(expression);
+                    Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    tokenizer.advance();
+
+                    XElement Expression;
+                    CompileExpression(tokenizer, out Expression);
+                    Term.Add(Expression);
+
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "]")
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    else
+                        throw new CompilerException("]", tokenizer.LineCompiling);
+                    tokenizer.advance();
                 }
 
             }
             else
                 throw new CompilerException("true|false|null|this|string|int|identifier", tokenizer.LineCompiling);
+            
+            
         }
 
         public void CompileExpressionList(JackTokenizer tokenizer, out XElement expressionList)
