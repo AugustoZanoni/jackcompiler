@@ -16,6 +16,7 @@ namespace JackCompiler
         };
 
         public XmlWriter writer = XmlWriter.Create(Console.Out, settings);
+        List<SymbolTable> classLevelTable = new List<SymbolTable>();        
         public CompilationEngine(string path)
         {
             try
@@ -83,19 +84,30 @@ namespace JackCompiler
 
         public void CompileClassVarDec(JackTokenizer tokenizer)
         {
+            SymbolTable ClassVarDecSymbol = new SymbolTable();
+
             XElement classVarDec = new XElement("classVarDec");
-            if(tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch( tokenizer.token().content.ToLower(), "(static|field)"))
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "(static|field)"))
+            {
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                ClassVarDecSymbol.kind = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("static|field", tokenizer.LineCompiling);
             tokenizer.advance();
-            if(tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean|className")) //Verificar Possibilidade de ClassName (Não COntempla) type
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean|className"))
+            { //Verificar Possibilidade de ClassName (Não COntempla) type
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                ClassVarDecSymbol.type = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("int|char|boolean|className", tokenizer.LineCompiling);
             tokenizer.advance();
-            if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER) 
+            if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+            {
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                ClassVarDecSymbol.name = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("Identifier", tokenizer.LineCompiling);
             tokenizer.advance();
@@ -103,7 +115,10 @@ namespace JackCompiler
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException(";", tokenizer.LineCompiling);
-            classVarDec.WriteTo(writer);           
+            classVarDec.WriteTo(writer);
+
+            ClassVarDecSymbol.index = classLevelTable.Count;
+            classLevelTable.Add(ClassVarDecSymbol);
         }
 
         public void CompileSubroutine(JackTokenizer tokenizer)
