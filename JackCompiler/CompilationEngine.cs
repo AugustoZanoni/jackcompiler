@@ -16,7 +16,7 @@ namespace JackCompiler
         };
 
         public XmlWriter writer = XmlWriter.Create(Console.Out, settings);
-        List<SymbolTable> classLevelTable = new List<SymbolTable>();        
+        SymbolTable symbolTable = new SymbolTable();        
         public CompilationEngine(string path)
         {
             try
@@ -84,7 +84,7 @@ namespace JackCompiler
 
         public void CompileClassVarDec(JackTokenizer tokenizer)
         {
-            SymbolTable ClassVarDecSymbol = new SymbolTable();
+            Symbol ClassVarDecSymbol = new Symbol();
 
             XElement classVarDec = new XElement("classVarDec");
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && Regex.IsMatch(tokenizer.token().content.ToLower(), "(static|field)"))
@@ -117,8 +117,8 @@ namespace JackCompiler
                 throw new CompilerException(";", tokenizer.LineCompiling);
             classVarDec.WriteTo(writer);
 
-            ClassVarDecSymbol.index = classLevelTable.Count;
-            classLevelTable.Add(ClassVarDecSymbol);
+            
+            symbolTable.Add(ClassVarDecSymbol);
         }
 
         public void CompileSubroutine(JackTokenizer tokenizer)
@@ -215,31 +215,47 @@ namespace JackCompiler
         public void CompileVarDec(JackTokenizer tokenizer, out XElement VarDec)
         {
             VarDec = new XElement("varDec");
+            Symbol symbol = new Symbol();
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "var")
+            {
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                symbol.kind = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("var", tokenizer.LineCompiling);
             tokenizer.advance();
             if (Regex.IsMatch(tokenizer.token().content.ToLower(), "int|char|boolean") || tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+            {
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                symbol.type = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("int|char|boolean", tokenizer.LineCompiling);
             tokenizer.advance();
             if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+            {
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                symbol.name = tokenizer.token().content;
+            }
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
+            symbolTable.Add(symbol);
             tokenizer.advance();
             while(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ",")
             {
+                Symbol whileSymbol = new Symbol() { kind = symbol.kind, type = symbol.type };
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
                 if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+                {
                     VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    whileSymbol.name = tokenizer.token().content;
+                }
                 else
                     throw new CompilerException("identifier", tokenizer.LineCompiling);
                 tokenizer.advance();
+                symbolTable.Add(whileSymbol);
             }
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
@@ -359,7 +375,10 @@ namespace JackCompiler
                 throw new CompilerException("let", tokenizer.LineCompiling);
             tokenizer.advance();
             if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+            {
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                symbolTable.findSymbol(tokenizer.token().content);
+            }
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
             tokenizer.advance();
