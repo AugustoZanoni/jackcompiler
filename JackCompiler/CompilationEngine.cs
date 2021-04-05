@@ -408,14 +408,14 @@ namespace JackCompiler
             CompileExpression(tokenizer, out letExpression);
             letStatement.Add(letExpression);
 
-            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR
+            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR -- PROGRAMA APARENTEMENTE ESTÁVEL SEM ESSA PARTE
 
-            while(tokenizer.token().content != ";"){
-                Console.WriteLine(tokenizer.token().content); // Testando
+            /*while(tokenizer.token().content != ";"){
+                //Console.WriteLine(tokenizer.token().content); // Testando
                 tokenizer.advance();
-            }
+            }*/
 
-            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR
+            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR -- PROGRAMA APARENTEMENTE ESTÁVEL SEM ESSA PARTE
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -605,16 +605,13 @@ namespace JackCompiler
                 tokenizer.advance();
 
                 if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "."){
-                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ".")
-                    {
+                    Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    tokenizer.advance();
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
                         Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                        tokenizer.advance();
-                        if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
-                            Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                        else
-                            throw new CompilerException("identifier", tokenizer.LineCompiling);
-                        tokenizer.advance();
-                    }
+                    else
+                        throw new CompilerException("identifier", tokenizer.LineCompiling);
+                    tokenizer.advance();
                     if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
                         Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                     else
@@ -636,13 +633,14 @@ namespace JackCompiler
                     else
                         throw new CompilerException(")", tokenizer.LineCompiling);
                     tokenizer.advance();
+
                     if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                         Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                     else
                         throw new CompilerException(";", tokenizer.LineCompiling);
                 }
                 
-                if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "[")
+                else if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "[")
                 {
                     Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                     tokenizer.advance();
@@ -657,6 +655,19 @@ namespace JackCompiler
                         throw new CompilerException("]", tokenizer.LineCompiling);
                     tokenizer.advance();
                 }
+
+                //CORRIGIR
+
+                else if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL &&
+                        "+-*/|".Contains(tokenizer.token().content)){ // CORRIGIR --> O "+-*/|", pode ser substituido por alguma variavel para ser mais fácil a localização
+                    while(tokenizer.token().content != ";"){
+                        //Console.WriteLine(tokenizer.token().content); // Testando
+                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                        tokenizer.advance();
+                    }
+                }
+
+                //CORRIGIR
 
             }
             else

@@ -11,7 +11,8 @@ namespace JackCompiler
     {
         static void Main(string[] args)
         {
-            new CompilationEngine("main.jack"); // ExpressionLessSquare/Main.jack
+            //new CompilationEngine("main.jack"); // Ou esse ou o de baixo
+            new CompilationEngine("ExpressionLessSquare/Main.jack"); //  Ou esse ou o de cima
             //RunJackTokenizer();
         }
 
