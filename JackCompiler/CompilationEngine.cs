@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -15,8 +16,9 @@ namespace JackCompiler
             IndentChars = "    "
         };
 
-        public XmlWriter writer = XmlWriter.Create(Console.Out, settings);
-        SymbolTable symbolTable = new SymbolTable();        
+        public XmlWriter xmlWriter = XmlWriter.Create(Console.Out, settings);
+        SymbolTable symbolTable = new SymbolTable();
+        StreamWriter codeWriter = File.CreateText("codeGen.txt");
         public CompilationEngine(string path)
         {
             try
@@ -35,16 +37,16 @@ namespace JackCompiler
         {
             if (tokenizer.token().content.ToLower() == "class")
             {
-                writer.WriteStartElement("class");
-                writer.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
+                xmlWriter.WriteStartElement("class");
+                xmlWriter.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
                 tokenizer.advance();
                 if(tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
-                    writer.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
+                    xmlWriter.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
                 else
                     throw new CompilerException("class", tokenizer.LineCompiling);
                 tokenizer.advance();
                 if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL)
-                    writer.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
+                    xmlWriter.WriteElementString(tokenizer.token().type.ToString(), tokenizer.token().content);
                 else
                     throw new CompilerException("(", tokenizer.LineCompiling);
 
@@ -73,10 +75,10 @@ namespace JackCompiler
                 }
 
                 //Corrigir
-                writer.WriteElementString("SYMBOL", "}");
+                xmlWriter.WriteElementString("SYMBOL", "}");
 
-                writer.WriteEndElement();
-                writer.Flush();
+                xmlWriter.WriteEndElement();
+                xmlWriter.Flush();
             } else {
                 throw new CompilerException("class", tokenizer.LineCompiling);
             }
@@ -115,7 +117,7 @@ namespace JackCompiler
                 classVarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException(";", tokenizer.LineCompiling);
-            classVarDec.WriteTo(writer);
+            classVarDec.WriteTo(xmlWriter);
 
             
             symbolTable.Add(ClassVarDecSymbol);
@@ -197,7 +199,7 @@ namespace JackCompiler
                 SubroutineBody.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("}", tokenizer.LineCompiling);
-            Subroutine.WriteTo(writer);
+            Subroutine.WriteTo(xmlWriter);
         }
 
         public void CompileParameterList(JackTokenizer tokenizer, out XElement ParameterList)
@@ -572,7 +574,6 @@ namespace JackCompiler
             //tokenizer.advance();          
         }
 
-        //Must be Implemented
         public void CompileTerm(JackTokenizer tokenizer, out XElement Term)
         {
             Term = new XElement("term");
