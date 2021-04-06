@@ -18,7 +18,7 @@ namespace JackCompiler
 
         public XmlWriter xmlWriter = XmlWriter.Create(Console.Out, settings);
         SymbolTable symbolTable = new SymbolTable();
-        StreamWriter codeWriter = File.CreateText("codeGen.txt");
+        StreamWriter codeWriter = File.CreateText("codeGen.vm");
         public CompilationEngine(string path)
         {
             try
@@ -370,8 +370,9 @@ namespace JackCompiler
         public void CompileLet(JackTokenizer tokenizer, out XElement letStatement)
         {
             letStatement = new XElement("letStatements");
+            
 
-            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "let")
+            if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "let") 
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("let", tokenizer.LineCompiling);
@@ -379,7 +380,7 @@ namespace JackCompiler
             if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
             {
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                symbolTable.findSymbol(tokenizer.token().content);
+                codeWriter.WriteLine( "push this " + symbolTable.findSymbol(tokenizer.token().content));
             }
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
