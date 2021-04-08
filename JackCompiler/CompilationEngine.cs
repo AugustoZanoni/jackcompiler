@@ -18,14 +18,16 @@ namespace JackCompiler
 
         public XmlWriter xmlWriter = XmlWriter.Create(Console.Out, settings);
         SymbolTable symbolTable = new SymbolTable();
-        StreamWriter codeWriter = File.CreateText("codeGen.vm");
+        VMWriter VMWriter;
         public CompilationEngine(string path)
         {
             try
             {
+                VMWriter = new VMWriter(path);
                 JackTokenizer Tokenizer = new JackTokenizer(path);
                 Tokenizer.advance();
                 CompileClass(Tokenizer);
+                VMWriter.close();
             }
             catch(Exception ex)
             {
@@ -380,7 +382,6 @@ namespace JackCompiler
             if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
             {
                 letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                codeWriter.WriteLine( "push this " + symbolTable.findSymbol(tokenizer.token().content));
             }
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
