@@ -13,7 +13,7 @@ namespace JackCompiler
         private string _kind = "";
         public string kind { get { return _kind; } set { _kind = value; } }
         private int _index = 0;
-        public int index { get { return _index; } set { _index = value; } }
+        public int index { get { return _index; } set { _index = value; } }          
 
         public Symbol() { }
     }
@@ -46,14 +46,16 @@ namespace JackCompiler
             classScope.Clear();
         }
 
-        public int findSymbol(string name)
+        public Symbol findSymbol(string name)
         {
-            var element = classScope.Find(e => e.name == name);
-            if(element == null)element = localScope.Find(e => e.name == name);
+            var element = localScope.Find(e => e.name == name);
+            if (element == null) element = classScope.Find(e => e.name == name); 
+
 
             if (element == null) throw new Exception(name + " variable not found");
+            
 
-            return element.index;
+            return element;
 
         }
     }

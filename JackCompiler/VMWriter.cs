@@ -7,6 +7,31 @@ namespace JackCompiler
 {
     class VMWriter
     {
+        public enum Segments
+        {
+            CONSTANT = 0,
+            ARGUMENT = 1,
+            LOCAL = 2,
+            STATIC = 3,
+            THIS = 4,
+            THAT = 5,
+            POINTER = 6,
+            TEMP = 7,
+        };
+
+        public enum Commands
+        {
+            ADD = 0,
+            SUB = 1,
+            NEG = 2,
+            EQ = 3,
+            GT = 4,
+            LT = 5,
+            AND = 6,
+            OR = 7,
+            NOT = 8,
+        };
+
         public StreamWriter codeWriter;
         public VMWriter(string outputfile)
         {
@@ -14,21 +39,21 @@ namespace JackCompiler
             codeWriter = File.CreateText(outputfile);
         }
 
-        public void WritePush(Symbol symbol)
-        {
-
+        public void WritePush(Segments segment, Symbol symbol)
+        {            
+            this.codeWriter.WriteLine("push "+segment.ToString().ToLower()+ " "+symbol.index); 
         }
-        public void WritePop(Symbol symbol)
+        public void WritePop(Segments segment, Symbol symbol)
         {
-
+            this.codeWriter.WriteLine("pop " + segment.ToString().ToLower() + " " + symbol.index);
         }
-        public void WriteArithmetic(Symbol symbol)
+        public void WriteArithmetic(Commands command)
         {
-
+            this.codeWriter.WriteLine(command.ToString().ToLower()) ;
         }
-        public void WriteCall(Symbol symbol)
+        public void WriteCall(string name, int nArgs)
         {
-
+            this.codeWriter.WriteLine($"Hello {name} {nArgs}");
         }
         public void WriteFunction(Symbol symbol)
         {
@@ -36,19 +61,19 @@ namespace JackCompiler
         }
         public void WriteReturn()
         {
-            codeWriter.WriteLine("return");
+            this.codeWriter.WriteLine("return");
         }
-        public void WriteLabel(Symbol symbol)
+        public void WriteLabel(string label)
         {
-
+            this.codeWriter.WriteLine("label " + label);
         }
-        public void WriteGoto(Symbol symbol)
+        public void WriteGoto(string label)
         {
-
+            this.codeWriter.WriteLine("goto " + label);
         }
-        public void WriteIf(Symbol symbol)
+        public void WriteIf(string label)
         {
-
+            this.codeWriter.WriteLine("if-goto " + label);
         }
         public void close()
         {

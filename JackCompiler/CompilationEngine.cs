@@ -19,6 +19,7 @@ namespace JackCompiler
         public XmlWriter xmlWriter = XmlWriter.Create(Console.Out, settings);
         SymbolTable symbolTable = new SymbolTable();
         VMWriter VMWriter;
+        public int ControlFlowID;
         public CompilationEngine(string path)
         {
             try
@@ -33,6 +34,11 @@ namespace JackCompiler
             {
                 throw ex;
             }
+        }
+
+        public int labelGenerator(string label)
+        {
+            return ControlFlowID++;
         }
 
         public void CompileClass(JackTokenizer tokenizer)
@@ -224,7 +230,7 @@ namespace JackCompiler
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "var")
             {
                 VarDec.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                symbol.kind = tokenizer.token().content;
+                symbol.kind = "local";
             }
             else
                 throw new CompilerException("var", tokenizer.LineCompiling);
@@ -288,11 +294,11 @@ namespace JackCompiler
                         CompileIf(tokenizer, out ifSatement);
                         Statements.Add(ifSatement);
                         break;
-                    /*case "while":
+                    case "while":
                         XElement whileStatement;
                         CompileWhile(tokenizer, out whileStatement);
                         Statements.Add(whileStatement);
-                        break;*/
+                        break;
                     case "do":
                         XElement Do;
                         compileDo(tokenizer, out Do);
@@ -316,7 +322,7 @@ namespace JackCompiler
             {
                 
             }*/
-        }
+        }    
 
         public void compileDo(JackTokenizer tokenizer, out XElement Do)
         {
@@ -330,6 +336,7 @@ namespace JackCompiler
                 Do.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
+            VMWriter.WritePop(VMWriter.Segments.TEMP, symbolTable.findSymbol(tokenizer.token().content));
             tokenizer.advance();
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ".")
             {
@@ -436,34 +443,37 @@ namespace JackCompiler
                 returnStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("return", tokenizer.LineCompiling);
-            /*if (tokenizer.token().type != JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
+            if (tokenizer.token().type != JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
             {
                 XElement expression;
-                //XElement expression = new XElement("expression");
-                //XElement term = new XElement("term");
-                //if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
-                //    term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                //else
-                //    throw new CompilerException();
-                //expression.Add(term);
                 CompileExpression(tokenizer, out expression);
                 returnStatement.Add(expression);
-            }*/
+            }
+            else                 
+                VMWriter.WritePush(VMWriter.Segments.CONSTANT, new Symbol() { index = 0 });            
+
             tokenizer.advance();
+            VMWriter.WriteReturn();
+
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 returnStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException(";", tokenizer.LineCompiling);
+
+            
         }
 
         public void CompileIf(JackTokenizer tokenizer, out XElement ifStatement)
         {
             ifStatement = new XElement("ifStatements");
+            int id = labelGenerator("if");
+            string IF_FALSE = "IF_ELSE"+id, IF_END = "IF_END"+id;
             
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "if")
                 ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("if", tokenizer.LineCompiling);
+            VMWriter.WriteIf(IF_FALSE);
             tokenizer.advance();
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
@@ -521,12 +531,11 @@ namespace JackCompiler
             tokenizer.advance();
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "else")
-            {
-                if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "else")
-                    ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                else
-                    throw new CompilerException("else", tokenizer.LineCompiling);
+            {                    
+                ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
+                VMWriter.WriteGoto(IF_END);
+                VMWriter.WriteLabel(IF_FALSE);
 
                 if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "{")
                     ifStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -539,15 +548,20 @@ namespace JackCompiler
                 ifStatement.Add(elseStatements);
 
                 //Aparentemente o comportamento é estável
-                
-                while (tokenizer.token().content != "}"){
-                    if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD){
-                        if(tokenizer.token().content.ToLower() == "var"){
+
+                while (tokenizer.token().content != "}")
+                {
+                    if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD)
+                    {
+                        if (tokenizer.token().content.ToLower() == "var")
+                        {
                             XElement VarDec;
                             CompileVarDec(tokenizer, out VarDec);
                             ifStatement.Add(VarDec);
                             tokenizer.advance();
-                        } else {
+                        }
+                        else
+                        {
                             XElement Statement;
                             compileStatements(tokenizer, out Statement);
                             ifStatement.Add(Statement);
@@ -563,7 +577,11 @@ namespace JackCompiler
                 else
                     throw new CompilerException("}", tokenizer.LineCompiling);
                 tokenizer.advance();
+
+                VMWriter.WriteLabel(IF_END);
             }
+            else
+                VMWriter.WriteLabel(IF_FALSE);
                 
         }
         
@@ -573,32 +591,64 @@ namespace JackCompiler
             XElement term = new XElement("term");
             CompileTerm(tokenizer, out term);
             Expression.Add(term);
+
+
+            while (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL &&
+                    "+-*/&|<>=".Contains(tokenizer.token().content))
+                {
+                Expression.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+
+                if (tokenizer.token().content == "+") VMWriter.WriteArithmetic(VMWriter.Commands.ADD);
+                if (tokenizer.token().content == "-") VMWriter.WriteArithmetic(VMWriter.Commands.SUB);
+                if (tokenizer.token().content == "*") VMWriter.WriteCall("Math.multiply", 2);
+                if (tokenizer.token().content == "/") VMWriter.WriteCall("Math.divide", 2);
+                if (tokenizer.token().content == "&") VMWriter.WriteArithmetic(VMWriter.Commands.AND);
+                if (tokenizer.token().content == "|") VMWriter.WriteArithmetic(VMWriter.Commands.OR);
+                if (tokenizer.token().content == "<") VMWriter.WriteArithmetic(VMWriter.Commands.LT);
+                if (tokenizer.token().content == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
+                if (tokenizer.token().content == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
+
+                tokenizer.advance();
+                CompileTerm(tokenizer, out term);
+                Expression.Add(term);
+            }
             //tokenizer.advance();          
         }
 
         public void CompileTerm(JackTokenizer tokenizer, out XElement Term)
         {
             Term = new XElement("term");
-            if (Regex.IsMatch(tokenizer.token().content.ToLower(), "(-|~)")
-                ) Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-
-            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL ||
-                tokenizer.token().content.ToLower() == "("
-                )
+            if (Regex.IsMatch(tokenizer.token().content.ToLower(), "(-|~)"))
             {
+                Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                if (tokenizer.token().content == "-")
+                    VMWriter.WriteArithmetic(VMWriter.Commands.NEG);
+                else if (tokenizer.token().content == "~")
+                    VMWriter.WriteArithmetic(VMWriter.Commands.NOT);
+
+                tokenizer.advance();
+                XElement unaryOpTerm = new XElement("term");
+                CompileTerm(tokenizer, out unaryOpTerm);
+                Term.Add(unaryOpTerm);
+            }
+            else if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL || tokenizer.token().content.ToLower() == "(")
+            {
+                Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                tokenizer.advance();
+
                 XElement expression;
                 CompileExpression(tokenizer, out expression);
                 Term.Add(expression);
+
                 tokenizer.advance();
                 if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL ||
-                    tokenizer.token().content.ToLower() == ")") 
+                    tokenizer.token().content.ToLower() == ")")
                     Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 else
-                    throw new CompilerException(")",tokenizer.LineCompiling);
-            }
-
-
-            if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER ||
+                    throw new CompilerException(")", tokenizer.LineCompiling);
+            }                   
+            else if(
+                tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER||
                 tokenizer.token().type == JackTokenizer.Token.Type.INTEGER_CONSTANT ||
                 tokenizer.token().type == JackTokenizer.Token.Type.STRING_CONSTANT ||
                 Regex.IsMatch(tokenizer.token().content.ToLower(), "(true|false|null|this)")
@@ -659,19 +709,6 @@ namespace JackCompiler
                     tokenizer.advance();
                 }
 
-                //CORRIGIR
-
-                else if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL &&
-                        "+-*/|".Contains(tokenizer.token().content)){ // CORRIGIR --> O "+-*/|", pode ser substituido por alguma variavel para ser mais fácil a localização
-                    while(tokenizer.token().content != ";"){
-                        //Console.WriteLine(tokenizer.token().content); // Testando
-                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                        tokenizer.advance();
-                    }
-                }
-
-                //CORRIGIR
-
             }
             else
                 throw new CompilerException("true|false|null|this|string|int|identifier", tokenizer.LineCompiling);
@@ -701,10 +738,14 @@ namespace JackCompiler
         public void CompileWhile(JackTokenizer tokenizer, out XElement whileStatement)
         {
             whileStatement = new XElement("whileStatement");
+            int id = labelGenerator("while");
+            string WHILE_EXP = "WHILE_EXP" + id, WHILE_END = "WHILE_END" + id;
+
             if (tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD && tokenizer.token().content == "while")
                 whileStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("while", tokenizer.LineCompiling);
+            VMWriter.WriteLabel(WHILE_EXP);
             tokenizer.advance();
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
@@ -717,6 +758,8 @@ namespace JackCompiler
             CompileExpression(tokenizer, out Expression);
             whileStatement.Add(Expression);
 
+            VMWriter.WriteArithmetic(VMWriter.Commands.NOT);
+            VMWriter.WriteIf(WHILE_END);
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")")
                 whileStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
@@ -733,11 +776,13 @@ namespace JackCompiler
             compileStatements(tokenizer, out Statements);
             whileStatement.Add(Statements);
 
+            VMWriter.WriteGoto(WHILE_EXP);
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "}")
                 whileStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
                 throw new CompilerException("}", tokenizer.LineCompiling);
             tokenizer.advance();
+            VMWriter.WriteLabel(WHILE_END);
 
         }
     }

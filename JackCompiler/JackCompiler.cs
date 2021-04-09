@@ -12,7 +12,7 @@ namespace JackCompiler
         static void Main(string[] args)
         {
             //new CompilationEngine("main.jack"); // Ou esse ou o de baixo
-            new CompilationEngine("ExpressionLessSquare/Main.jack"); //  Ou esse ou o de cima
+            new CompilationEngine("nandtotetris/11/Average/Main.jack"); //  Ou esse ou o de cima
             //RunJackTokenizer();
         }
 
