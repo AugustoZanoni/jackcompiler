@@ -243,14 +243,11 @@ namespace JackCompiler
                             VMWriter.WriteCall("String.appendChar", 2);
                         }
                     }
-                    VMWriter.WriteCall(tempName, 1);
+                    //VMWriter.WriteCall(tempName, 1);
                     //VMWriter.WritePop(VMWriter.Segments.LOCAL, new Symbol() { index = 1 });
                 }
                 else if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER){
-                    
-                    if(tempName != null){
-                        //Console.WriteLine(tempName); // TESTANDO
-                    }
+
                     var temp = symbolTable.findSymbol(tokenizer.token().content);
                     if(temp.kind == "constant")
                         VMWriter.WritePushString(VMWriter.Segments.CONSTANT, temp.index.ToString());
@@ -268,7 +265,6 @@ namespace JackCompiler
                         VMWriter.WritePushString(VMWriter.Segments.POINTER, temp.index.ToString());
                     else if(temp.kind == "temp")
                         VMWriter.WritePushString(VMWriter.Segments.TEMP, temp.index.ToString());
-                    VMWriter.WriteCall(tempName, 1);
                     
                 }
 
@@ -276,7 +272,30 @@ namespace JackCompiler
 
                 ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
+                if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL){
+                    string currentSymbol = tokenizer.token().content;
+                    while(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content != ")"){
+                        ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                        tokenizer.advance();
+                        GeneratorExpression(tokenizer, ParameterList);
+                    }
+                    if (currentSymbol == "+") VMWriter.WriteArithmetic(VMWriter.Commands.ADD);
+                    if (currentSymbol == "-") VMWriter.WriteArithmetic(VMWriter.Commands.SUB);
+                    if (currentSymbol == "*") VMWriter.WriteCall("Math.multiply", 2);
+                    if (currentSymbol == "/") VMWriter.WriteCall("Math.divide", 2);
+                    if (currentSymbol == "&") VMWriter.WriteArithmetic(VMWriter.Commands.AND);
+                    if (currentSymbol == "|") VMWriter.WriteArithmetic(VMWriter.Commands.OR);
+                    if (currentSymbol == "<") VMWriter.WriteArithmetic(VMWriter.Commands.LT);
+                    if (currentSymbol == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
+                    if (currentSymbol == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
+                }
             }
+            VMWriter.WriteCall(tempName, 1);
+
+            //CORRIGIR - MODIFICADO POR RICARDO
         }       
 
         public void CompileVarDec(JackTokenizer tokenizer, out XElement VarDec)
@@ -396,21 +415,41 @@ namespace JackCompiler
             else
                 throw new CompilerException("identifier", tokenizer.LineCompiling);
 
-            // CORRIGIR: O PROBLEMA APARENTE PARACE COMEÇAR AQUI --> symbolTable.findSymbol(tokenizer.token().content)
+            //CORRIGIR - MODIFICADO POR RICARDO
 
-            //VMWriter.WritePop(VMWriter.Segments.TEMP, symbolTable.findSymbol(tokenizer.token().content));
+            string tempName;
+            tempName = tokenizer.token().content;
+
+            //CORRIGIR - MODIFICADO POR RICARDO
+
             tokenizer.advance();
-
-            // CORRIGIR: O PROBLEMA APARENTE PARACE COMEÇAR AQUI --> symbolTable.findSymbol(tokenizer.token().content)
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ".")
             {
                 Do.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
+                tempName += tokenizer.token().content;
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
                 tokenizer.advance();
-                if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER)
+
+                // CORRIGIR: PROBLEMA ENCONTRADO
+
+                if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER || tokenizer.token().type == JackTokenizer.Token.Type.KEYWORD) // Pq printString e printInt está sendo identificado como KEYWORD?
                     Do.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 else
                     throw new CompilerException("identifier", tokenizer.LineCompiling);
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
+                tempName += tokenizer.token().content;
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
+                // CORRIGIR: PROBLEMA ENCONTRADO
                 tokenizer.advance();
             }
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "(")
@@ -422,7 +461,13 @@ namespace JackCompiler
             if (tokenizer.token().content != ")")
             {
                 XElement expressionList;
-                CompileParameterList(tokenizer, out expressionList);
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+
+                CompileParameterList(tokenizer, out expressionList, tempName);
+
+                //CORRIGIR - MODIFICADO POR RICARDO
+                
                 Do.Add(expressionList);
             }
             else{
@@ -434,6 +479,12 @@ namespace JackCompiler
             else
                 throw new CompilerException(")", tokenizer.LineCompiling);
             tokenizer.advance();
+
+            //CORRIGIR - MODIFICADO POR RICARDO
+
+            VMWriter.WritePop(VMWriter.Segments.TEMP, new Symbol() { index = 0 }); // Precisa ser corrigido
+
+            //CORRIGIR - MODIFICADO POR RICARDO
 
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 Do.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -735,14 +786,14 @@ namespace JackCompiler
                 //CORRIGIR - MODIFICADO POR RICARDO
 
                 if (currentSymbol == "+") VMWriter.WriteArithmetic(VMWriter.Commands.ADD);
-                //if (tokenizer.token().content == "-") VMWriter.WriteArithmetic(VMWriter.Commands.SUB);
-                //if (tokenizer.token().content == "*") VMWriter.WriteCall("Math.multiply", 2);
-                //if (tokenizer.token().content == "/") VMWriter.WriteCall("Math.divide", 2);
-                //if (tokenizer.token().content == "&") VMWriter.WriteArithmetic(VMWriter.Commands.AND);
-                //if (tokenizer.token().content == "|") VMWriter.WriteArithmetic(VMWriter.Commands.OR);
+                if (currentSymbol == "-") VMWriter.WriteArithmetic(VMWriter.Commands.SUB);
+                if (currentSymbol == "*") VMWriter.WriteCall("Math.multiply", 2);
+                if (currentSymbol == "/") VMWriter.WriteCall("Math.divide", 2);
+                if (currentSymbol == "&") VMWriter.WriteArithmetic(VMWriter.Commands.AND);
+                if (currentSymbol == "|") VMWriter.WriteArithmetic(VMWriter.Commands.OR);
                 if (currentSymbol == "<") VMWriter.WriteArithmetic(VMWriter.Commands.LT);
-                //if (tokenizer.token().content == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
-                //if (tokenizer.token().content == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
+                if (currentSymbol == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
+                if (currentSymbol == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
 
                 //CORRIGIR - MODIFICADO POR RICARDO
 
@@ -891,6 +942,12 @@ namespace JackCompiler
                     CompileExpression(tokenizer, out Expression);
                     Term.Add(Expression);
 
+                    //CORRIGIR - MODIFICADO POR RICARDO
+
+                    VMWriter.WriteArithmetic(VMWriter.Commands.ADD); // Em vetor acontece a adição entre váriavel e indice
+
+                    //CORRIGIR - MODIFICADO POR RICARDO
+
                     if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "]")
                         Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                     else
@@ -993,5 +1050,54 @@ namespace JackCompiler
             VMWriter.WriteLabel(WHILE_END);
 
         }
+
+        //CORRIGIR - MODIFICADO POR RICARDO
+        public void GeneratorExpression(JackTokenizer tokenizer, XElement ParameterList){
+            
+            if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER){
+
+                var temp = symbolTable.findSymbol(tokenizer.token().content);
+                if(temp.kind == "constant")
+                    VMWriter.WritePushString(VMWriter.Segments.CONSTANT, temp.index.ToString());
+                else if(temp.kind == "argument")
+                    VMWriter.WritePushString(VMWriter.Segments.ARGUMENT, temp.index.ToString());
+                else if(temp.kind == "local")
+                    VMWriter.WritePushString(VMWriter.Segments.LOCAL, temp.index.ToString());
+                else if(temp.kind == "static")
+                    VMWriter.WritePushString(VMWriter.Segments.STATIC, temp.index.ToString());
+                else if(temp.kind == "this")
+                    VMWriter.WritePushString(VMWriter.Segments.THIS, temp.index.ToString());
+                else if(temp.kind == "that")
+                    VMWriter.WritePushString(VMWriter.Segments.THAT, temp.index.ToString());
+                else if(temp.kind == "pointer")
+                    VMWriter.WritePushString(VMWriter.Segments.POINTER, temp.index.ToString());
+                else if(temp.kind == "temp")
+                    VMWriter.WritePushString(VMWriter.Segments.TEMP, temp.index.ToString());
+                
+            }
+
+            ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+            tokenizer.advance();
+
+            if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL){
+                string currentSymbol = tokenizer.token().content;
+                while(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content != ")"){
+                    ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                    tokenizer.advance();
+                    GeneratorExpression(tokenizer, ParameterList);
+                }
+                if (currentSymbol == "+") VMWriter.WriteArithmetic(VMWriter.Commands.ADD);
+                if (currentSymbol == "-") VMWriter.WriteArithmetic(VMWriter.Commands.SUB);
+                if (currentSymbol == "*") VMWriter.WriteCall("Math.multiply", 2);
+                if (currentSymbol == "/") VMWriter.WriteCall("Math.divide", 2);
+                if (currentSymbol == "&") VMWriter.WriteArithmetic(VMWriter.Commands.AND);
+                if (currentSymbol == "|") VMWriter.WriteArithmetic(VMWriter.Commands.OR);
+                if (currentSymbol == "<") VMWriter.WriteArithmetic(VMWriter.Commands.LT);
+                if (currentSymbol == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
+                if (currentSymbol == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
+            }
+        }
+
+        //CORRIGIR - MODIFICADO POR RICARDO
     }
 }
