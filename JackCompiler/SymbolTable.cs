@@ -57,9 +57,9 @@ namespace JackCompiler
         public Symbol findSymbol(string name)
         {
             var element = localScope.Find(e => e.name == name);
-            foreach (var nomelus in localScope){
+            /*foreach (var nomelus in localScope){
                 Console.WriteLine(nomelus.name);
-            }
+            }*/
             if (element == null) element = classScope.Find(e => e.name == name); 
 
 
@@ -69,5 +69,21 @@ namespace JackCompiler
             return element;
 
         }
+
+        //
+
+        public bool findSymbolTeste(string name)
+        {
+            var element = localScope.Find(e => e.name == name);
+            /*foreach (var nomelus in localScope){
+                Console.WriteLine(nomelus.name);
+            }*/
+            if (element != null) return true; else return false;
+            
+            //Console.WriteLine("Esse é o elemento procurado: " + element.name);
+            
+        }
+
+        //
     }
 }
