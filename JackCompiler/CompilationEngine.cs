@@ -236,6 +236,7 @@ namespace JackCompiler
 
                 if(tokenizer.token().content.Contains('"')){
                     byte[] asciiBytes = Encoding.ASCII.GetBytes(tokenizer.token().content);
+                    VMWriter.WritePushString(VMWriter.Segments.CONSTANT, (tokenizer.token().content.Length - 2).ToString());
                     VMWriter.WriteCall("String.new", 1);
                     foreach(byte symbol in asciiBytes){
                         if(symbol != '"'){
