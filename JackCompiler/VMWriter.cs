@@ -53,11 +53,21 @@ namespace JackCompiler
         }
         public void WriteCall(string name, int nArgs)
         {
-            this.codeWriter.WriteLine($"Hello {name} {nArgs}");
-        }
-        public void WriteFunction(Symbol symbol)
-        {
+            //CORRIGIR - MODIFICADO POR RICARDO
 
+            this.codeWriter.WriteLine("call " + name + " " + nArgs);
+            
+            //CORRIGIR - MODIFICADO POR RICARDO
+
+            //this.codeWriter.WriteLine($"Hello {name} {nArgs}"); // Parte feita por Zanoni
+        }
+        public void WriteFunction(string label)
+        {
+            //CORRIGIR - MODIFICADO POR RICARDO
+
+            this.codeWriter.WriteLine("function Main." + label);
+
+            //CORRIGIR - MODIFICADO POR RICARDO
         }
         public void WriteReturn()
         {
@@ -80,6 +90,15 @@ namespace JackCompiler
             codeWriter.Flush();
             codeWriter.Close();
         }
+
+        //CORRIGIR - MODIFICADO POR RICARDO
+
+        public void WritePushString(Segments segment, string name)
+        {            
+            this.codeWriter.WriteLine("push "+segment.ToString().ToLower()+ " "+name); 
+        }
+
+        //CORRIGIR - MODIFICADO POR RICARDO
 
 
     }

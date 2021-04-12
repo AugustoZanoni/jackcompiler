@@ -37,6 +37,14 @@ namespace JackCompiler
             count++;
         }
 
+        // CORRIGIR - MODIFICADO POR RICARDO
+        
+        public int LocalScopeLenght(){
+            return count;
+        }
+
+        // CORRIGIR - MODIFICADO POR RICARDO
+
         public void FinishLocalScope()
         {
             localScope.Clear();
@@ -49,6 +57,9 @@ namespace JackCompiler
         public Symbol findSymbol(string name)
         {
             var element = localScope.Find(e => e.name == name);
+            foreach (var nomelus in localScope){
+                Console.WriteLine(nomelus.name);
+            }
             if (element == null) element = classScope.Find(e => e.name == name); 
 
 
