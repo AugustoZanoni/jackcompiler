@@ -200,6 +200,8 @@ namespace JackCompiler
                         SubroutineBody.Add(VarDec);
                         tokenizer.advance();
                     } else {
+                        FUNCTION += " " + symbolTable.LocalScopeLenght();
+                        VMWriter.WriteFunction(FUNCTION);
                         XElement Statement;
                         compileStatements(tokenizer, out Statement);
                         SubroutineBody.Add(Statement);
@@ -214,8 +216,7 @@ namespace JackCompiler
 
             //CORRIGIR - MODIFICADO POR RICARDO
 
-            FUNCTION += " " + symbolTable.LocalScopeLenght();
-            VMWriter.WriteFunction(FUNCTION);
+            
 
             //CORRIGIR - MODIFICADO POR RICARDO
 
@@ -526,7 +527,7 @@ namespace JackCompiler
                 else if(currentSymbol.kind == "argument")
                     VMWriter.WritePop(VMWriter.Segments.ARGUMENT, new Symbol() { index = currentSymbol.index });
                 else if(currentSymbol.kind == "local")
-                    VMWriter.WritePop(VMWriter.Segments.LOCAL, new Symbol() { index = currentSymbol.index });
+                    VMWriter.WritePush(VMWriter.Segments.LOCAL, new Symbol() { index = currentSymbol.index });
                 else if(currentSymbol.kind == "static")
                     VMWriter.WritePop(VMWriter.Segments.STATIC, new Symbol() { index = currentSymbol.index });
                 else if(currentSymbol.kind == "this")
