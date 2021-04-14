@@ -560,48 +560,54 @@ namespace JackCompiler
                     throw new CompilerException("]", tokenizer.LineCompiling);
                 tokenizer.advance();
 
-                currentSymbol.kind = "temp";
+                //currentSymbol.kind = "temp";
+
+
+                if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "=")
+                    letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                else
+                    throw new CompilerException("=", tokenizer.LineCompiling);
+                tokenizer.advance();
+
+                XElement letExpression;
+                CompileExpression(tokenizer, out letExpression);
+                letStatement.Add(letExpression);
+
+                VMWriter.WritePop(VMWriter.Segments.TEMP, new Symbol() { index = 0 });
+                VMWriter.WritePop(VMWriter.Segments.POINTER, new Symbol() { index = 1 });
+                VMWriter.WritePush(VMWriter.Segments.TEMP, new Symbol() { index = 0 });
+                VMWriter.WritePop(VMWriter.Segments.THAT, new Symbol() { index = 0 });
+            }
+            else
+            {
+                if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "=")
+                    letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
+                else
+                    throw new CompilerException("=", tokenizer.LineCompiling);
+                tokenizer.advance();
+
+                XElement letExpression;
+                CompileExpression(tokenizer, out letExpression);
+                letStatement.Add(letExpression);
+
+                if (currentSymbol.kind == "constant")
+                    VMWriter.WritePop(VMWriter.Segments.CONSTANT, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "argument")
+                    VMWriter.WritePop(VMWriter.Segments.ARGUMENT, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "local")
+                    VMWriter.WritePop(VMWriter.Segments.LOCAL, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "static")
+                    VMWriter.WritePop(VMWriter.Segments.STATIC, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "this")
+                    VMWriter.WritePop(VMWriter.Segments.THIS, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "that")
+                    VMWriter.WritePop(VMWriter.Segments.THAT, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "pointer")
+                    VMWriter.WritePop(VMWriter.Segments.POINTER, new Symbol() { index = currentSymbol.index });
+                else if (currentSymbol.kind == "temp")
+                    VMWriter.WritePop(VMWriter.Segments.TEMP, new Symbol() { index = currentSymbol.index });
             }
 
-            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "=")
-                letStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-            else
-                throw new CompilerException("=", tokenizer.LineCompiling);
-            tokenizer.advance();
-
-            XElement letExpression;
-            CompileExpression(tokenizer, out letExpression);
-            letStatement.Add(letExpression);
-
-            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR -- PROGRAMA APARENTEMENTE ESTÁVEL SEM ESSA PARTE
-
-            /*while(tokenizer.token().content != ";"){
-                //Console.WriteLine(tokenizer.token().content); // Testando
-                tokenizer.advance();
-            }*/
-
-            //CORRIGIR --> ESSA PARTE NÃO DEVERIA EXISTIR -- PROGRAMA APARENTEMENTE ESTÁVEL SEM ESSA PARTE
-
-            //CORRIGIR - MODIFICADO POR RICARDO
-
-            if(currentSymbol.kind == "constant")
-                VMWriter.WritePop(VMWriter.Segments.CONSTANT, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "argument")
-                VMWriter.WritePop(VMWriter.Segments.ARGUMENT, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "local")
-                VMWriter.WritePop(VMWriter.Segments.LOCAL, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "static")
-                VMWriter.WritePop(VMWriter.Segments.STATIC, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "this")
-                VMWriter.WritePop(VMWriter.Segments.THIS, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "that")
-                VMWriter.WritePop(VMWriter.Segments.THAT, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "pointer")
-                VMWriter.WritePop(VMWriter.Segments.POINTER, new Symbol() { index = currentSymbol.index });
-            else if(currentSymbol.kind == "temp")
-                VMWriter.WritePop(VMWriter.Segments.TEMP, new Symbol() { index = currentSymbol.index });
-
-            
 
             //CORRIGIR - MODIFICADO POR RICARDO
 
@@ -947,7 +953,8 @@ namespace JackCompiler
                     //CORRIGIR - MODIFICADO POR RICARDO
 
                     VMWriter.WriteArithmetic(VMWriter.Commands.ADD); // Em vetor acontece a adição entre váriavel e indice
-
+                    VMWriter.WritePop(VMWriter.Segments.POINTER, new Symbol(){index=1});
+                    VMWriter.WritePush(VMWriter.Segments.THAT, new Symbol(){index=0});
                     //CORRIGIR - MODIFICADO POR RICARDO
 
                     if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == "]")
