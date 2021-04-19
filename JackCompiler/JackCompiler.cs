@@ -11,7 +11,8 @@ namespace JackCompiler
     {
         static void Main(string[] args)
         {
-            new CompilationEngine("nandtotetris/11/Average/Main.jack"); //  Pasta 11
+            //new CompilationEngine("nandtotetris/11/Average/Main.jack"); //  Pasta 11
+            new CompilationEngine("nandtotetris/11/ConvertToBin/Main.jack"); // Pasta 11
             //new CompilationEngine("nandtotetris/11/Seven/Main.jack"); // Pasta 11
             //RunJackTokenizer();
         }

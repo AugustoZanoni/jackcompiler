@@ -207,7 +207,6 @@ namespace JackCompiler
                         SubroutineBody.Add(Statement);
                     }
                 } else {
-                    //Console.WriteLine(tokenizer.token().content);
                     tokenizer.advance();
                 }
                 // TESTADO
@@ -224,6 +223,8 @@ namespace JackCompiler
         public void CompileParameterList(JackTokenizer tokenizer, out XElement ParameterList, string tempName = null, int tempIndex = -1)
         {
             ParameterList = new XElement("parameterList");
+            int countParameter = 0;
+            bool isParameter = false;
 
             while (tokenizer.token().content != ")")
             {
@@ -239,9 +240,8 @@ namespace JackCompiler
 
                 //CORRIGIR - MODIFICADO POR RICARDO
 
-                                
-
                 if(tokenizer.token().content.Contains('"')){
+                    countParameter += 1;
                     byte[] asciiBytes = Encoding.ASCII.GetBytes(tokenizer.token().content);
                     VMWriter.WritePushString(VMWriter.Segments.CONSTANT, (tokenizer.token().content.Length - 2).ToString());
                     VMWriter.WriteCall("String.new", 1);
@@ -255,6 +255,7 @@ namespace JackCompiler
                     //VMWriter.WritePop(VMWriter.Segments.LOCAL, new Symbol() { index = 1 });
                 }
                 else if (tokenizer.token().type == JackTokenizer.Token.Type.IDENTIFIER){
+                    countParameter += 1;
 
                     var temp = symbolTable.findSymbol(tokenizer.token().content);
                     if(temp.kind == "constant")
@@ -275,18 +276,30 @@ namespace JackCompiler
                         VMWriter.WritePushString(VMWriter.Segments.TEMP, temp.index.ToString());
                     
                 } else if(tokenizer.token().type == JackTokenizer.Token.Type.INTEGER_CONSTANT){
+                    countParameter += 1;
                     VMWriter.WritePushString(VMWriter.Segments.CONSTANT, tokenizer.token().content);
                 }
 
                 //CORRIGIR - MODIFICADO POR RICARDO
 
+                Console.WriteLine("0 --> " + tokenizer.token().content);
+                if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ",") isParameter = true;
+
                 ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
+
+                Console.WriteLine("0 --> " + tokenizer.token().content);
 
                 //CORRIGIR - MODIFICADO POR RICARDO
 
                 if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && "+-*/&|<>=".Contains(tokenizer.token().content)){
+                    countParameter -= 1;
                     string currentSymbol = tokenizer.token().content;
+
+                    if(isParameter){
+                        countParameter += 1;
+                        currentSymbol = "~";
+                    }
                     
                     while(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content != ")"){
 
@@ -305,9 +318,15 @@ namespace JackCompiler
                             else
                                 throw new CompilerException(")", tokenizer.LineCompiling);
                         } else {
+                            countParameter += 1;
+                            
                             ParameterList.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                             tokenizer.advance();
-                            GeneratorExpression(tokenizer, ParameterList);
+                            //
+                            XElement expression;
+                            CompileExpression(tokenizer, out expression);
+                            //tokenizer.advance();
+                            //GeneratorExpression(tokenizer, ParameterList);
                         }
                     }
                     if (currentSymbol == "+") VMWriter.WriteArithmetic(VMWriter.Commands.ADD);
@@ -319,9 +338,10 @@ namespace JackCompiler
                     if (currentSymbol == "<") VMWriter.WriteArithmetic(VMWriter.Commands.LT);
                     if (currentSymbol == ">") VMWriter.WriteArithmetic(VMWriter.Commands.GT);
                     if (currentSymbol == "=") VMWriter.WriteArithmetic(VMWriter.Commands.EQ);
+                    if (currentSymbol == "~") VMWriter.WriteArithmetic(VMWriter.Commands.NEG);
                 }
             }
-            VMWriter.WriteCall(tempName, 1);
+            VMWriter.WriteCall(tempName, countParameter);
 
             //CORRIGIR - MODIFICADO POR RICARDO
         }       
@@ -664,6 +684,12 @@ namespace JackCompiler
             tokenizer.advance();
             VMWriter.WriteReturn();
 
+            if(tokenizer.token().content != ";"){
+                XElement Expression;
+                CompileExpression(tokenizer, out Expression);
+                returnStatement.Add(Expression);
+            }
+
             if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                 returnStatement.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
             else
@@ -801,7 +827,6 @@ namespace JackCompiler
             CompileTerm(tokenizer, out term);
             Expression.Add(term);
 
-
             while (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL &&
                     "+-*/&|<>=".Contains(tokenizer.token().content))
                 {
@@ -839,8 +864,6 @@ namespace JackCompiler
         {
             Term = new XElement("term");
 
-            //Console.WriteLine(tokenizer.token().content);
-
             if (Regex.IsMatch(tokenizer.token().content.ToLower(), "(-|~)"))
             {
                 Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
@@ -854,7 +877,7 @@ namespace JackCompiler
                 CompileTerm(tokenizer, out unaryOpTerm);
                 Term.Add(unaryOpTerm);
             }
-            else if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL || tokenizer.token().content.ToLower() == "(")
+            if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL || tokenizer.token().content.ToLower() == "(")
             {
                 Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
                 tokenizer.advance();
@@ -945,7 +968,6 @@ namespace JackCompiler
 
                         //CORRIGIR - MODIFICADO POR RICARDO
                         
-                        Console.WriteLine(tokenizer.token().content + " " + tokenizer.token().type);;
                         CompileParameterList(tokenizer, out expressionList, tempName);
 
                         //CORRIGIR - MODIFICADO POR RICARDO
@@ -962,13 +984,10 @@ namespace JackCompiler
                         throw new CompilerException(")", tokenizer.LineCompiling);
                     tokenizer.advance();
 
-                    if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
+                    /*if (tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ";")
                         Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                    /*else if(tokenizer.token().type == JackTokenizer.Token.Type.SYMBOL && tokenizer.token().content == ")"){
-                        Term.Add(new XElement(tokenizer.token().type.ToString(), tokenizer.token().content));
-                    }*/
                     else
-                        throw new CompilerException(";", tokenizer.LineCompiling);
+                        throw new CompilerException(";", tokenizer.LineCompiling);*/
                     
                 }
                 
@@ -995,9 +1014,10 @@ namespace JackCompiler
                     tokenizer.advance();
                 }
             }
-            else
+            else{
+                Console.WriteLine(tokenizer.token().content + " " +  tokenizer.token().type);
                 throw new CompilerException("true|false|null|this|string|int|identifier", tokenizer.LineCompiling);
-            
+            }
             
         }
 
